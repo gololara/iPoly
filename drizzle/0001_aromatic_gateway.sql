@@ -1,0 +1,1 @@
+ALTER TABLE `attachments` ADD `included` integer DEFAULT 0 NOT NULL;

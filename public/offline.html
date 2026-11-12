@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>iPoly · Sin conexión</title>
+ <style>body{font:16px/1.5 system-ui;background:#f8f7f2;color:#20303e;max-width:420px;margin:15vh auto;padding:24px}img{width:112px}a{display:inline-block;background:#566b48;color:white;padding:12px 20px;border-radius:12px;text-decoration:none}</style>
+</head>
+<body>
+ <img src="/logo.png" alt="iPoly">
+ <h1 id="heading">Volvemos cuando tengas conexión.</h1>
+ <p id="message">Tu memoria está guardada. Si dejaste un borrador en este dispositivo, lo recuperarás al abrir iPoly de nuevo.</p>
+ <a id="retry" href="/">Volver a intentar</a>
+ <script>
+ if(document.cookie.split(';').some(part=>part.trim()==='ipoly-ui-language=en')){
+  document.documentElement.lang='en';
+  document.title='iPoly · Offline';
+  document.getElementById('heading').textContent='We’ll be back when you’re online.';
+  document.getElementById('message').textContent='Your memories are saved. Any draft kept on this device will be available when you reopen iPoly.';
+  document.getElementById('retry').textContent='Try again';
+ }
+ </script>
+</body>
+</html>

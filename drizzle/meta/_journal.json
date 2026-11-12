@@ -1,0 +1,146 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791471180196,
+      "tag": "0000_mature_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791471564906,
+      "tag": "0001_aromatic_gateway",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791807933241,
+      "tag": "0002_living_galactus",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791814822697,
+      "tag": "0003_amazing_molly_hayes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791901735751,
+      "tag": "0004_lonely_paper_doll",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791906616963,
+      "tag": "0005_blushing_veda",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791962679985,
+      "tag": "0006_majestic_thanos",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791971544137,
+      "tag": "0007_powerful_black_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791976554749,
+      "tag": "0008_cooing_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791979022756,
+      "tag": "0009_watery_mach_iv",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791987577605,
+      "tag": "0010_grey_nuke",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792400000000,
+      "tag": "0011_teacher_stable_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792500000000,
+      "tag": "0012_private_class_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792696965100,
+      "tag": "0013_memory_contributions",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1792797224989,
+      "tag": "0015_legacy_attribution",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1793021493310,
+      "tag": "0016_memory_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1793024151725,
+      "tag": "0017_memory_uploads",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1793024579313,
+      "tag": "0018_simple_memory_classes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794494288823,
+      "tag": "0019_learning_languages",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794499375766,
+      "tag": "0020_teachers_by_language",
+      "breakpoints": true
+    }
+  ]
+}
