@@ -34,13 +34,12 @@ try{
   async batch(statements){if(adapter.beforeBatch){const cb=adapter.beforeBatch;adapter.beforeBatch=null;await cb();}if(adapter.barrier)await adapter.barrier();const r=await db.batch(statements.map(s=>s.raw));if(adapter.loseResponse){adapter.loseResponse=false;throw Error('SYNTHETIC_COMMITTED_RESPONSE_LOST');}return r;}
  };globalThis.__approvalReviewDb=adapter;
  const fixture=async()=>{
-  const noteId=id(),teacherId=id(),attachmentId=id(),classId=id();
+  const noteId=id(),teacherId=id(),attachmentId=id();
   await db.prepare('INSERT INTO notes(id,owner,language,original,request_hash,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').bind(noteId,A,'en','Synthetic original',noteId,at,at).run();
   await db.prepare('INSERT INTO teachers(id,owner,name,languages,request_hash,created_at,updated_at,language_id) VALUES(?,?,?,?,?,?,?,?)').bind(teacherId,A,'Synthetic teacher','[]',teacherId,at,at,'en').run();
   await bucket.put('review/'+attachmentId,image);await db.prepare("INSERT INTO attachments(id,owner,note_id,object_key,included,mime,size,origin,created_at) VALUES(?,?,?,?,1,'image/png',?,'personal',?)").bind(attachmentId,A,noteId,'review/'+attachmentId,image.length,at).run();
-  await db.prepare("INSERT INTO tutor_records(id,owner,kind,state,data,request_hash,created_at,applied_at) VALUES(?,?,'preparation','applied',?,?,?,?)").bind(classId,A,JSON.stringify({language:'en',references:[{noteId,expectedVersion:1}]}),classId,at,at).run();
-  const input={id:id(),noteId,expectedNoteVersion:1,expectedMemoryVersion:0,kind:'correction',text:'Exact synthetic review',author:{role:'tutor',id:teacherId},classId,attachments:[{attachmentId}]};
-  return {noteId,teacherId,attachmentId,classId,input};
+  const input={id:id(),noteId,expectedNoteVersion:1,expectedMemoryVersion:0,kind:'correction',text:'Exact synthetic review',author:{role:'tutor',id:teacherId},recordedBy:{role:'user'},attachments:[{attachmentId}]};
+  return {noteId,teacherId,attachmentId,input};
  };
  const empty=async f=>{assert.equal(await db.prepare('SELECT id FROM memory_contributions WHERE note_id=?').bind(f.noteId).first(),null);assert.equal(await db.prepare('SELECT note_id FROM memory_heads WHERE note_id=?').bind(f.noteId).first(),null);};
  const toolRpc=await mf.dispatchFetch('http://localhost/mcp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/list'})});const tools=(await toolRpc.json()).result.tools;
@@ -59,8 +58,6 @@ try{
   ['attachment ownership',f=>db.prepare('UPDATE attachments SET owner=? WHERE id=?').bind(B,f.attachmentId).run()],
   ['attachment inclusion',f=>db.prepare('UPDATE attachments SET included=0 WHERE id=?').bind(f.attachmentId).run()],
   ['attachment content hash',f=>db.prepare('UPDATE attachments SET content_hash=? WHERE id=?').bind('changed-synthetic-hash',f.attachmentId).run()],
-  ['class ownership',f=>db.prepare('UPDATE tutor_records SET owner=? WHERE id=?').bind(B,f.classId).run()],
-  ['class membership',f=>db.prepare('UPDATE tutor_records SET data=? WHERE id=?').bind(JSON.stringify({language:'en',references:[]}),f.classId).run()]
  ];
  for(const [name,mutate]of mutations)await check('TOCTOU '+name+' revoked after check, before real transaction',async()=>{const f=await fixture(),p=await propose(A,f.input);adapter.beforeBatch=()=>mutate(f);await denied(()=>apply(A,args(p)));await empty(f);});
  await check('TOCTOU proposal immutable columns cannot drift before approval',async()=>{const f=await fixture(),p=await propose(A,f.input);adapter.beforeBatch=()=>db.prepare('UPDATE memory_proposals SET expected_memory_version=1 WHERE id=?').bind(p.id).run();await denied(()=>apply(A,args(p)));await empty(f);});

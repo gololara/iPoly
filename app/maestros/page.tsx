@@ -4,7 +4,6 @@ import {listLearningLanguages} from '@/lib/languages';
 import {isLanguageId} from '@/lib/language';
 import {requireChatGPTUser} from '../chatgpt-auth';
 import '../memorias/memory-detail.css';
-import '../clases/classes.css';
 
 export const dynamic='force-dynamic';
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){

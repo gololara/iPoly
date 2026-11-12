@@ -5,10 +5,8 @@ WITH configured AS (
  SELECT id,name,created_at FROM learning_languages WHERE owner=?1
 ), legacy AS (
  SELECT language FROM notes WHERE owner=?1 AND language IN ('sq','en')
- UNION ALL SELECT language FROM memory_classes WHERE owner=?1 AND language IN ('sq','en')
- UNION ALL SELECT language FROM tutor_threads WHERE owner=?1 AND language IN ('sq','en')
- UNION ALL SELECT json_extract(data,'$.language') FROM tutor_records
- WHERE owner=?1 AND kind='preparation' AND json_extract(data,'$.language') IN ('sq','en')
+ UNION ALL SELECT language_id FROM teachers WHERE owner=?1 AND language_id IN ('sq','en')
+
 ), inherited AS (
  SELECT 'sq' AS id,'Shqip' AS name,'1970-01-01T00:00:00.000Z' AS created_at
  UNION ALL SELECT 'en','English','1970-01-01T00:00:00.001Z'

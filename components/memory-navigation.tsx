@@ -17,12 +17,12 @@ export function MemoryLanguage({language,loading=false,onLanguage}:{language?:La
   </>:<span className="memory-language-placeholder">{loading?tr("Cargando idioma…"):tr("Idioma no disponible")}</span>}
  </div>;
 }
-export function MemoryPrimaryNavigation({language,section='memories'}:{language?:Language;section?:'memories'|'classes'}){
+export function MemoryPrimaryNavigation({language,section='memories'}:{language?:Language;section?:'memories'|'teachers'}){
  const {t:tr}=useUiText();
  const list=memoryListHref(language);
- return <nav className="memory-detail-nav" aria-label={tr("Navegación principal")}><Button asChild variant={section==='memories'?'default':'ghost'} className="memory-nav-link"><a href={list} aria-current={section==='memories'?'location':undefined}>{tr("Memorias")}</a></Button><Button asChild variant={section==='classes'?'default':'ghost'} className="memory-nav-link"><a aria-current={section==='classes'?'location':undefined} href={'/maestros'+(language?'?language='+language:'')}>{tr("Maestros")}</a></Button></nav>;
+ return <nav className="memory-detail-nav" aria-label={tr("Navegación principal")}><Button asChild variant={section==='memories'?'default':'ghost'} className="memory-nav-link"><a href={list} aria-current={section==='memories'?'location':undefined}>{tr("Memorias")}</a></Button><Button asChild variant={section==='teachers'?'default':'ghost'} className="memory-nav-link"><a aria-current={section==='teachers'?'location':undefined} href={'/maestros'+(language?'?language='+language:'')}>{tr("Maestros")}</a></Button></nav>;
 }
-export function MemoryNavigation({language,loading=false,onLanguage,section='memories'}:{language?:Language;loading?:boolean;onLanguage:(language:Language)=>void;section?:'memories'|'classes'}){
+export function MemoryNavigation({language,loading=false,onLanguage,section='memories'}:{language?:Language;loading?:boolean;onLanguage:(language:Language)=>void;section?:'memories'|'teachers'}){
  const {t:tr}=useUiText();
  return <div className="memory-detail-shell"><header className="memory-detail-header"><a href={memoryListHref(language)} aria-label={tr("iPoly · Volver a Memorias")}><img src="/logo.png" width="100" height="50" alt="iPoly"/></a><MemoryLanguage language={language} loading={loading} onLanguage={onLanguage}/></header><MemoryPrimaryNavigation language={language} section={section}/></div>;
 }

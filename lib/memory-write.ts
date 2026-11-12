@@ -15,7 +15,7 @@ export async function readMemoryProposal(owner:string,id:string){const r=await r
 export async function listMemoryProposals(owner:string,noteId:string,offset=0){
  if(!Number.isSafeInteger(offset)||offset<0||offset>100000)throw new ApiError(400,'Página de propuestas inválida.');
  uuid.parse(noteId);const db=database();if(!await db.prepare('SELECT id FROM notes WHERE id=? AND owner=?').bind(noteId,owner).first())throw new ApiError(404,'No encontramos esa memoria.');
- const rows=(await db.prepare("SELECT p.* FROM memory_proposals p WHERE p.owner=? AND p.note_id=? AND p.state='proposed' ORDER BY p.created_at,p.id LIMIT 31 OFFSET ?").bind(owner,noteId,offset).all<ProposalRow>()).results;
+ const rows=(await db.prepare("SELECT p.* FROM memory_proposals p WHERE p.owner=? AND p.note_id=? AND p.state='proposed' AND json_extract(p.content,'$.classId') IS NULL ORDER BY p.created_at,p.id LIMIT 31 OFFSET ?").bind(owner,noteId,offset).all<ProposalRow>()).results;
  return {proposals:await Promise.all(rows.slice(0,30).map(view)),nextOffset:rows.length>30?offset+30:null};
 }
 const hashContent=(id:string,c:MemoryContent)=>digest(canonical({id,proposalVersion:1,content:c}));
@@ -33,6 +33,7 @@ function guardFailure(e:unknown){return /memory_(?:proposal|head)_guard|UNIQUE|F
 export async function proposeMemoryContribution(owner:string,input:unknown){
  const v=proposeMemorySchema.parse(input),db=database(),requestHash=await digest(canonical(v)),previous=await row(owner,v.id);
  if(previous){if(previous.request_hash!==requestHash)throw conflict();return view(previous);}
+ if(v.author.role==='tutor'&&v.recordedBy?.role!=='user')throw new ApiError(400,'Indica que la persona usuaria registró el aporte del maestro.');
  if(!v.text.trim()&&!v.attachments.length)throw new ApiError(400,'Añade texto o un adjunto guardado.');
  if(new Set(v.attachments.map(a=>a.attachmentId)).size!==v.attachments.length)throw new ApiError(400,'Cada adjunto aparece una sola vez.');
  // Read authorization before resolving any actor/media; transaction repeats it.
@@ -66,7 +67,7 @@ async function verifiedApplied(owner:string,r:ProposalRow){
   db.prepare(`SELECT c.id,c.owner,c.note_id,c.kind,c.text,c.context,c.author_role,c.author_id,c.author_name,c.recorder_role,c.recorded_by,c.recorder_name,c.class_id,c.state,c.approved_by,c.created_at,c.applied_at FROM memory_contributions c JOIN memory_proposals p ON p.id=c.id AND p.owner=c.owner AND p.note_id=c.note_id JOIN memory_heads h ON h.note_id=c.note_id AND h.owner=c.owner JOIN notes n ON n.id=c.note_id AND n.owner=c.owner WHERE c.id=? AND c.owner=? AND c.state='applied' AND c.approved_by=? AND p.state='applied' AND p.approved_by=? AND p.content_hash=? AND p.content=? AND p.version=? AND h.version>=? AND ${ledger.sql}`).bind(r.id,owner,owner,owner,r.content_hash,r.content,r.version,c.expectedMemoryVersion+1,...ledger.args),
   db.prepare('SELECT m.contribution_id,m.attachment_id,m.speaker_role,m.speaker_id,m.speaker_name,m.recorder_role,m.recorded_by,m.recorder_name,m.consent_at FROM memory_contribution_attachments m JOIN memory_contributions c ON c.id=m.contribution_id WHERE c.id=? AND c.owner=?').bind(r.id,owner)
  ]);
- const expected={id:r.id,owner,note_id:c.noteId,kind:c.kind,text:c.text,context:c.context,author_role:c.author.role,author_id:c.author.id,author_name:c.author.name,recorder_role:c.recordedBy?.role??null,recorded_by:c.recordedBy?.id??null,recorder_name:c.recordedBy?.name??null,class_id:c.classId,state:'applied',approved_by:owner,created_at:r.created_at,applied_at:r.applied_at};
+ const expected={id:r.id,owner,note_id:c.noteId,kind:c.kind,text:c.text,context:c.context,author_role:c.author.role,author_id:c.author.id,author_name:c.author.name,recorder_role:c.recordedBy?.role??null,recorded_by:c.recordedBy?.id??null,recorder_name:c.recordedBy?.name??null,class_id:c.classId??null,state:'applied',approved_by:owner,created_at:r.created_at,applied_at:r.applied_at};
  const expectedMedia=c.attachments.map(a=>({contribution_id:r.id,attachment_id:a.attachmentId,speaker_role:a.speaker?.role??null,speaker_id:a.speaker?.id??null,speaker_name:a.speaker?.name??null,recorder_role:a.recordedBy?.role??null,recorded_by:a.recordedBy?.id??null,recorder_name:a.recordedBy?.name??null,consent_at:a.recordingPermission?.obtainedAt??null}));
  const sorted=(rows:Record<string,unknown>[])=>rows.map(canonical).sort();
  if(canonical(result[0].results[0])!==canonical(expected)||canonical(sorted(result[1].results))!==canonical(sorted(expectedMedia)))throw conflict();
@@ -75,9 +76,10 @@ async function verifiedApplied(owner:string,r:ProposalRow){
 export async function applyMemoryContribution(owner:string,input:unknown){
  const {v,r,c}=await checked(owner,input,true),db=database();
  if(r.state==='cancelled')throw conflict();if(r.state==='applied')return verifiedApplied(owner,r);
+ if(c.classId)throw new ApiError(409,'Este borrador pertenece al flujo anterior. Crea un aporte directamente en la memoria.');
  const g=memoryGuard(owner,c),now=new Date().toISOString();
  const statements=[db.prepare(`INSERT INTO memory_heads(note_id,owner,version,guard) VALUES(?,?,?,CASE WHEN ${g.sql} AND EXISTS(SELECT 1 FROM memory_proposals WHERE id=? AND owner=? AND state='proposed' AND content_hash=? AND content=? AND note_id=? AND version=? AND expected_note_version=? AND expected_memory_version=?) THEN 1 ELSE 0 END) ON CONFLICT(note_id) DO UPDATE SET version=excluded.version,guard=excluded.guard WHERE memory_heads.owner=excluded.owner`).bind(c.noteId,owner,c.expectedMemoryVersion+1,...g.args,v.id,owner,v.contentHash,r.content,c.noteId,r.version,c.expectedNoteVersion,c.expectedMemoryVersion),
-  db.prepare("INSERT INTO memory_contributions(id,owner,note_id,kind,text,context,author_role,author_id,author_name,recorder_role,recorded_by,recorder_name,class_id,state,approved_by,created_at,applied_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'applied',?,?,?)").bind(v.id,owner,c.noteId,c.kind,c.text,c.context,c.author.role,c.author.id,c.author.name,c.recordedBy?.role??null,c.recordedBy?.id??null,c.recordedBy?.name??null,c.classId,owner,r.created_at,now),
+  db.prepare("INSERT INTO memory_contributions(id,owner,note_id,kind,text,context,author_role,author_id,author_name,recorder_role,recorded_by,recorder_name,state,approved_by,created_at,applied_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'applied',?,?,?)").bind(v.id,owner,c.noteId,c.kind,c.text,c.context,c.author.role,c.author.id,c.author.name,c.recordedBy?.role??null,c.recordedBy?.id??null,c.recordedBy?.name??null,owner,r.created_at,now),
   ...c.attachments.map(a=>db.prepare('INSERT INTO memory_contribution_attachments(contribution_id,attachment_id,speaker_role,speaker_id,speaker_name,recorder_role,recorded_by,recorder_name,consent_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(v.id,a.attachmentId,a.speaker?.role??null,a.speaker?.id??null,a.speaker?.name??null,a.recordedBy?.role??null,a.recordedBy?.id??null,a.recordedBy?.name??null,a.recordingPermission?.obtainedAt??null)),
   db.prepare("UPDATE memory_proposals SET state='applied',applied_at=?,approved_by=? WHERE id=? AND owner=? AND state='proposed' AND content_hash=?").bind(now,owner,v.id,owner,v.contentHash)];
  try{await db.batch(statements);}catch(e){const same=await row(owner,v.id);if(same?.state==='applied'&&same.content_hash===v.contentHash&&same.content===r.content)return verifiedApplied(owner,same);if(guardFailure(e))throw conflict();throw e;}

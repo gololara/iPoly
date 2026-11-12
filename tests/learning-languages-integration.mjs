@@ -76,7 +76,7 @@ try{
   assert.deepEqual((await rpc('ipoly_estado',{},B)).learningLanguages,[fromChat,anotherWeb.language]);
   assert.match(await (await fetch('/memorias?language='+japanese.id,{headers:headers(A)})).text(),/日本語/);
  });
- await check('new language supports literal capture, independent retrieval, and an existing class workflow',async()=>{
+ await check('new language supports literal capture and independent retrieval',async()=>{
   const firstNote=crypto.randomUUID(),secondNote=crypto.randomUUID();
   const literal='Me faltó una palabra; esta nota está en español.';
   const saved=await api('notes',A,{id:firstNote,language:italian.id,original:literal});assert.equal(saved.status,201);
@@ -85,9 +85,6 @@ try{
   const memory=await rpc('ipoly_memoria',{id:firstNote});
   assert.equal(memory.note.original,literal);assert.equal(memory.note.language,italian.id);
   const list=await (await api('memories?language='+japanese.id)).json();assert.deepEqual(list.memories.map(n=>n.id),[secondNote]);
-  const cls=await api('classes',A,{id:crypto.randomUUID(),language:italian.id,title:'Clase de italiano',memories:[{noteId:firstNote,expectedVersion:1}]});
-  assert.equal(cls.status,201,await cls.clone().text());
-  const classes=await (await api('classes?language='+italian.id)).json();assert.equal(classes.classes.length,1);
  });
  await check('choosing Shqip first does not unlock English for a new account',async()=>{
   const who='first-shqip';

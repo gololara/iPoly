@@ -1,31 +1,94 @@
-import {uiLocaleFromCookies} from '@/lib/ui-locale';
 import {languageId} from '@/lib/language';
 import {addLearningLanguage,listLearningLanguages} from '@/lib/languages';
-import {readSimpleClass,listSimpleClasses,createSimpleClass,addSimpleClassMemories,markSimpleClassMemory,removeSimpleClassMemory,setSimpleClassClosed,setSimpleClassTeacher} from '@/lib/simple-classes';
 import {storeMemoryMedia,discardMemoryMedia,previewMemoryMedia} from '@/lib/memory-media';
 import {listMemoryProposals,readMemoryProposal,proposeMemoryContribution,applyMemoryContribution,cancelMemoryContribution} from '@/lib/memory-write';
 import {listMemories} from '@/lib/memory-list';
 import {readMemory} from '@/lib/memory-read';
-import {readClassSession} from '@/lib/class-session';
-import {teacherSharingState,disableTeacherLink,listHistoricalTeacherAccess} from '@/lib/teacher-sharing';
-import {accessMaterial,listPublications,revokePublication} from '@/lib/teacher-publications';
-import {readMaterialSelection,readTeacherCopy} from '@/lib/material-selection';
-import {getClassDetails} from '@/lib/class-details';
-import {getClassTeacher} from '@/lib/class-teachers';
 import {getTeacher,listTeachers,createTeacher,updateTeacher} from '@/lib/teachers';
-import {z} from 'zod';
-import {listPreparations,getPreparation} from '@/lib/tutor';
 import {owner,json,body,failure} from '@/lib/http';
-import {listNotes,getNote,listTags,createNote,updateNote,listDebriefs,proposeDebrief,applyDebrief,storePhoto,storeAudio,discardUpload,attachment,ApiError} from '@/lib/data';
-const retiredPosts=new Set(["class-contribution","class-session-note","class-session-closing","teacher-sharing-preview","teacher-sharing-confirm","teacher-sharing-retry","material-preview","material-publish","material-retry","preparations","tutor","closings"]);
-const retiredPatches=new Set(["teacher-copy","material-selection","class-details","class-teacher"]);
+import {listTags,createNote,updateNote,storePhoto,storeAudio,discardUpload,attachment,ApiError} from '@/lib/data';
+import {uiLocaleFromCookies} from '@/lib/ui-locale';
+
 export const dynamic='force-dynamic';
-async function handle(req:Request){try{const u=new URL(req.url),path=u.pathname.slice(5).split('/');if(path[0]==='material-access'&&path[1])return await accessMaterial();const who=await owner(req);if((req.method==='POST'&&retiredPosts.has(path[0]))||(req.method==='PATCH'&&retiredPatches.has(path[0])))throw new ApiError(410,'Este flujo anterior está archivado. Su historial sigue disponible.');if(req.method==='GET'){if(path[0]==='legacy-teacher-access'&&path.length===1)return json(await listHistoricalTeacherAccess(who));if(path[0]==='languages'&&path.length===1)return json({languages:await listLearningLanguages(who)});if(path[0]==='classes'&&path.length===1){const language=u.searchParams.get('language')??(await listLearningLanguages(who))[0]?.id;return json(language?await listSimpleClasses(who,languageId.parse(language),Number(u.searchParams.get('offset')??0)):{classes:[],nextOffset:null});}if(path[0]==='classes'&&path.length===2)return json(await readSimpleClass(who,path[1],u.searchParams.get('q')??''));if(path[0]==='memory-proposals'&&path.length===1)return json(await listMemoryProposals(who,u.searchParams.get('noteId')??'',Number(u.searchParams.get('offset')??0)));if(path[0]==='memory-proposals'&&path.length===2)return json({proposal:await readMemoryProposal(who,path[1])});if(path[0]==='memories'&&path.length===1){const language=u.searchParams.get('language')??(await listLearningLanguages(who))[0]?.id;return json(language?await listMemories(who,{language,q:u.searchParams.get('q')??'',history:u.searchParams.getAll('history'),offset:Number(u.searchParams.get('offset')??0)}):{memories:[],nextOffset:null});}if(path[0]==='memories'&&path.length===2)return json({memory:await readMemory(who,path[1])});if(path[0]==='teachers'){if(path[1])return json({teacher:await getTeacher(who,path[1])});return json(await listTeachers(who,u.searchParams.get('scope')==='unassigned'?null:languageId.parse(u.searchParams.get('language')),Number(u.searchParams.get('offset')||0)));}if(path[0]==='preparations'){if(path[1]&&path[2]==='class-session')return json(await readClassSession(who,path[1]));if(path[1]&&path[2]==='teacher-copy')return json(await readTeacherCopy(who,path[1]));if(path[1]&&path[2]==='sharing')return json(await teacherSharingState(who,path[1]));if(path[1]&&path[2]==='publications')return json(await listPublications(who,path[1]));if(path[1]&&path[2]==='material')return json(await readMaterialSelection(who,path[1]));if(path[1]&&path[2]==='details')return json({details:await getClassDetails(who,path[1])});if(path[1]&&path[2]==='teacher')return json({assignment:await getClassTeacher(who,path[1])});if(path[1])return json(await getPreparation(who,path[1]));return json(await listPreparations(who,{language:u.searchParams.get('language')||undefined,offset:Number(u.searchParams.get('offset')||0)}));}if(path[0]==='notes'){if(path[1])return json({note:await getNote(who,path[1])});return json(await listNotes(who,{forTutor:u.searchParams.has('forTutor')?z.enum(['true','false']).parse(u.searchParams.get('forTutor'))==='true':undefined,review:u.searchParams.get('review')||undefined,language:u.searchParams.get('language')||undefined,tag:u.searchParams.get('tag')||undefined,q:u.searchParams.get('q')||undefined,from:u.searchParams.get('from')||undefined,to:u.searchParams.get('to')||undefined,offset:Number(u.searchParams.get('offset')||0)}));}if(path[0]==='tags')return json({tags:await listTags(who)});if(path[0]==='debriefs')return json({debriefs:await listDebriefs(who)});if((path[0]==='files'||path[0]==='memory-upload-previews')&&path.length===2){const {file,mime,size}=await (path[0]==='files'?attachment(who,path[1]):previewMemoryMedia(who,path[1]));const headers:Record<string,string>={'Content-Type':mime,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'",'Accept-Ranges':'bytes','Content-Length':String(size)};const range=req.headers.get('range');if(range){const match=/^bytes=(\d*)-(\d*)$/.exec(range);if(!match||(!match[1]&&!match[2]))return new Response(null,{status:416,headers:{...headers,'Content-Length':'0','Content-Range':'bytes */'+size}});let start=match[1]?Number(match[1]):Math.max(0,size-Number(match[2])),end=match[1]?(match[2]?Math.min(size-1,Number(match[2])):size-1):size-1;if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=size||end<start||(!match[1]&&Number(match[2])===0))return new Response(null,{status:416,headers:{...headers,'Content-Length':'0','Content-Range':'bytes */'+size}});const bytes=await file.arrayBuffer();return new Response(bytes.slice(start,end+1),{status:206,headers:{...headers,'Content-Length':String(end-start+1),'Content-Range':`bytes ${start}-${end}/${size}`}});}return new Response(file.body,{headers});}}
-if(req.method==='POST'){if(path[0]==='languages'&&path.length===1)return json({language:await addLearningLanguage(who,await body(req))},201);if(path[0]==='classes'&&path.length===1)return json(await createSimpleClass(who,await body(req)),201);if(path[0]==='class-memories'&&path.length===1)return json(await addSimpleClassMemories(who,await body(req)));if(path[0]==='class-memory-reviewed'&&path.length===1)return json(await markSimpleClassMemory(who,await body(req)));if(path[0]==='class-memory-removal'&&path.length===1)return json(await removeSimpleClassMemory(who,await body(req)));if(path[0]==='class-session-state'&&path.length===1)return json(await setSimpleClassClosed(who,await body(req)));if(path[0]==='simple-class-teacher'&&path.length===1)return json(await setSimpleClassTeacher(who,await body(req)));if(path[0]==='memory-uploads'&&path.length===1){if(Number(req.headers.get('content-length')||0)>8*1024*1024+20000)throw new ApiError(413,'El adjunto es demasiado grande.');const f=await req.formData(),file=f.get('file');if(!(file instanceof File))throw new ApiError(400,'Elige un adjunto.');return json(await storeMemoryMedia(who,String(f.get('noteId')),String(f.get('id')),await file.arrayBuffer(),String(f.get('kind')),String(f.get('origin')||'personal')),201);}if(path[0]==='memory-proposals'&&path.length===1)return json({proposal:await proposeMemoryContribution(who,await body(req))},201);if(path[0]==='memory-approval'&&path.length===1)return json({proposal:await applyMemoryContribution(who,await body(req))});if(path[0]==='memory-cancellation'&&path.length===1)return json({proposal:await cancelMemoryContribution(who,await body(req))});if(path[0]==='teacher-sharing-disable')return json(await disableTeacherLink(who,await body(req)));if(path[0]==='material-revoke')return json(await revokePublication(who,await body(req)));if(path[0]==='teachers')return json({teacher:await createTeacher(who,await body(req))},201);if(path[0]==='notes')return json({note:await createNote(who,await body(req))},201);if(path[0]==='debriefs'&&path[1]==='apply')return json(await applyDebrief(who,await body(req)));if(path[0]==='debriefs')return json({debrief:await proposeDebrief(who,await body(req))},201);if(path[0]==='audio-uploads'){if(Number(req.headers.get('content-length')||0)>2*1024*1024+20000)throw new ApiError(413,'El audio supera 2 MB.');const form=await req.formData(),file=form.get('file');if(!(file instanceof File))throw new ApiError(400,'Falta el audio.');return json(await storeAudio(who,String(form.get('noteId')),String(form.get('id')),await file.arrayBuffer()));}if(path[0]==='uploads'){if(Number(req.headers.get('content-length')||0)>8*1024*1024+20000)throw new ApiError(413,'Usa una foto de hasta 8 MB.');const form=await req.formData(),file=form.get('file');if(!(file instanceof File))throw new ApiError(400,'Elige una foto.');return json(await storePhoto(who,String(form.get('noteId')),String(form.get('id')),await file.arrayBuffer(),String(form.get('origin')||'personal')));}}
-if(req.method==='DELETE'&&path[0]==='memory-uploads'&&path.length===2){await discardMemoryMedia(who,path[1]);return new Response(null,{status:204});}
-if(req.method==='DELETE'&&path[0]==='uploads'&&path[1]){await discardUpload(who,path[1]);return new Response(null,{status:204});}
 
+async function mediaResponse(req:Request,who:string,id:string,preview:boolean){
+ const {file,mime,size}=await (preview?previewMemoryMedia(who,id):attachment(who,id));
+ const headers:Record<string,string>={
+  'Content-Type':mime,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff',
+  'Content-Security-Policy':"default-src 'none'",'Accept-Ranges':'bytes','Content-Length':String(size),
+ };
+ const range=req.headers.get('range');
+ if(!range)return new Response(file.body,{headers});
+ const match=/^bytes=(\d*)-(\d*)$/.exec(range);
+ const unsatisfiable=()=>new Response(null,{status:416,headers:{...headers,'Content-Length':'0','Content-Range':'bytes */'+size}});
+ if(!match||(!match[1]&&!match[2]))return unsatisfiable();
+ const start=match[1]?Number(match[1]):Math.max(0,size-Number(match[2]));
+ const end=match[1]?(match[2]?Math.min(size-1,Number(match[2])):size-1):size-1;
+ if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=size||end<start)return unsatisfiable();
+ const bytes=await file.arrayBuffer();
+ return new Response(bytes.slice(start,end+1),{status:206,headers:{...headers,'Content-Length':String(end-start+1),'Content-Range':`bytes ${start}-${end}/${size}`}});
+}
 
-if(req.method==='PATCH'&&path[0]==='teachers')return json({teacher:await updateTeacher(who,await body(req))});
-if(req.method==='PATCH'&&path[0]==='notes')return json({note:await updateNote(who,await body(req))});return json({error:'No encontramos esa acción.'},404);}catch(e){return failure(e,uiLocaleFromCookies(req.headers.get('cookie')));}}
+async function upload(req:Request,who:string,kind:string){
+ const audio=kind==='audio-uploads';
+ const limit=(audio?2:8)*1024*1024+20000;
+ if(Number(req.headers.get('content-length')||0)>limit)throw new ApiError(413,audio?'El audio supera 2 MB.':kind==='memory-uploads'?'El adjunto es demasiado grande.':'Usa una foto de hasta 8 MB.');
+ const form=await req.formData(),file=form.get('file');
+ if(!(file instanceof File))throw new ApiError(400,audio?'Falta el audio.':'Elige una foto.');
+ const noteId=String(form.get('noteId')),id=String(form.get('id')),bytes=await file.arrayBuffer(),origin=String(form.get('origin')||'personal');
+ if(kind==='memory-uploads')return json(await storeMemoryMedia(who,noteId,id,bytes,String(form.get('kind')),origin),201);
+ return json(audio?await storeAudio(who,noteId,id,bytes):await storePhoto(who,noteId,id,bytes,origin));
+}
+
+async function handle(req:Request){
+ try{
+  const url=new URL(req.url),[path,id,...rest]=url.pathname.slice(5).split('/');
+  const who=await owner(req),params=url.searchParams;
+  if(rest.length)return json({error:'No encontramos esa acción.'},404);
+  const offset=()=>Number(params.get('offset')??0);
+  if(req.method==='GET'){
+   switch(path){
+    case 'languages':if(!id)return json({languages:await listLearningLanguages(who)});break;
+    case 'tags':if(!id)return json({tags:await listTags(who)});break;
+    case 'memories':{
+     if(id)return json({memory:await readMemory(who,id)});
+     const language=params.get('language')??(await listLearningLanguages(who))[0]?.id;
+     return json(language?await listMemories(who,{language,q:params.get('q')??'',history:params.getAll('history'),offset:offset()}):{memories:[],nextOffset:null});
+    }
+    case 'teachers':return id?json({teacher:await getTeacher(who,id)}):json(await listTeachers(who,languageId.parse(params.get('language')),offset()));
+    case 'memory-proposals':return id?json({proposal:await readMemoryProposal(who,id)}):json(await listMemoryProposals(who,params.get('noteId')??'',offset()));
+    case 'files':
+    case 'memory-upload-previews':if(id)return await mediaResponse(req,who,id,path==='memory-upload-previews');break;
+   }
+  }
+  if(req.method==='POST'&&!id){
+   switch(path){
+    case 'languages':return json({language:await addLearningLanguage(who,await body(req))},201);
+    case 'teachers':return json({teacher:await createTeacher(who,await body(req))},201);
+    case 'notes':return json({note:await createNote(who,await body(req))},201);
+    case 'memory-proposals':return json({proposal:await proposeMemoryContribution(who,await body(req))},201);
+    case 'memory-approval':return json({proposal:await applyMemoryContribution(who,await body(req))});
+    case 'memory-cancellation':return json({proposal:await cancelMemoryContribution(who,await body(req))});
+    case 'memory-uploads':
+    case 'audio-uploads':
+    case 'uploads':return await upload(req,who,path);
+   }
+  }
+  if(req.method==='PATCH'&&!id){
+   if(path==='teachers')return json({teacher:await updateTeacher(who,await body(req))});
+   if(path==='notes')return json({note:await updateNote(who,await body(req))});
+  }
+  if(req.method==='DELETE'&&id){
+   if(path==='memory-uploads'){
+    await discardMemoryMedia(who,id);
+    return new Response(null,{status:204});
+   }
+   if(path==='uploads'){
+    await discardUpload(who,id);
+    return new Response(null,{status:204});
+   }
+  }
+  return json({error:'No encontramos esa acción.'},404);
+ }catch(e){return failure(e,uiLocaleFromCookies(req.headers.get('cookie')));}
+}
 export {handle as GET,handle as POST,handle as PATCH,handle as DELETE};

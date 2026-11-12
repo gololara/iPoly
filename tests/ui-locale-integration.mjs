@@ -32,9 +32,8 @@ try{
  const memories=await html('/memorias?language='+id,'en');assert.match(memories,/>Memories</);assert.match(memories,/\/maestros\?language=/);assert.match(memories,/New memory|Restoring your memory draft/);
  assert.match(memories,/<div class="ipoly-language-controls"><button[^>]*aria-label="Interface language"[^>]*>.*?<label class="memory-language">/s);
  assert.equal([...memories.matchAll(/aria-label="Interface language"/g)].length,1);
- const teachers=await html('/maestros?language='+id,'en');assert.match(teachers,/<h1[^>]*>Teachers<\/h1>/);assert.match(teachers,/Add teacher/);assert.match(teachers,/View classes and history/);
+ assert.match(await html('/maestros?language='+id,'en'),/<h1[^>]*>Teachers<\/h1>/);
  assert.match(await html('/maestros?language='+id,'es'),/<h1[^>]*>Maestros<\/h1>/);
- assert.match(await html('/clases?archive=preparations&language='+id,'en'),/Preparations and history/);
  const noAuth=await call('/maestros?language='+id,{locale:'en',account:null});assert.equal(noAuth.status,307);assert.equal(new URL(noAuth.headers.get('location'),'http://localhost').searchParams.get('return_to'),'/maestros?language='+id);
- console.log('Both UI locales, onboarding, navigation, preserved content, translated validation and archived class route verified.');
+ console.log('Both UI locales, onboarding, navigation, preserved content, translated validation and Teachers route verified.');
 }finally{await mf.dispose();}

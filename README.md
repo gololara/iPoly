@@ -2,7 +2,7 @@
 
 A private, installable web app for your language-learning memory. Capture a note, photo, or short audio clip in the moment. Revisit it later, add what you learned, and keep the original and its history. Each installation starts with an empty language list. Choose the languages you study and use the globe in the header to switch the interface between Español and English.
 
-Teachers are grouped by study language. You can attribute a contribution to a teacher without creating a class. Classes are available when you want to organize a session. The app stores your records and files. A compatible chat client can use its MCP tools to help you review material and propose additions for your approval.
+Teachers are grouped by study language. Record what a teacher explained as a contribution to the relevant memory. The app stores your records and files. A compatible chat client can use its MCP tools to help you review material and propose additions for your approval.
 
 ## Install
 

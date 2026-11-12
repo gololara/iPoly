@@ -21,7 +21,14 @@ export async function seedMemoryDetail(mf){
   {kind:'addition',text:'Quiero probarlo en otra conversación y anotar qué me resulta difícil.',context:'',role:'user',name:'Usuario de ejemplo'},
   {kind:'addition',text:'PROPOSAL MUST NOT BE VISIBLE IN THE TIMELINE',context:'',role:'ai',name:'IA de ejemplo',pending:true}
  ];
- for(const r of records){const id=crypto.randomUUID();await db.prepare('INSERT INTO memory_contributions(id,owner,note_id,kind,text,context,author_role,author_id,author_name,recorder_role,recorded_by,recorder_name,state,approved_by,created_at,applied_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,f.owner,f.rich,r.kind,r.text,r.context,r.role,r.role==='tutor'?f.teacher:r.role==='user'?f.owner:null,r.name,'user',f.owner,'Usuario de ejemplo',r.pending?'proposed':'applied',r.pending?null:f.owner,at,r.pending?null:at).run();
+ for(const r of records){
+  const id=crypto.randomUUID();
+  if(r.pending){
+   const response=await mf.dispatchFetch('http://localhost/api/memory-proposals',{method:'POST',headers:{...fixtureHeaders,'Content-Type':'application/json'},body:JSON.stringify({id,noteId:f.rich,expectedNoteVersion:1,expectedMemoryVersion:0,kind:r.kind,text:r.text,context:r.context,author:{role:r.role,name:r.name},recordedBy:{role:'user'}})});
+   assert.equal(response.status,201,await response.text());
+   continue;
+  }
+  await db.prepare("INSERT INTO memory_contributions(id,owner,note_id,kind,text,context,author_role,author_id,author_name,recorder_role,recorded_by,recorder_name,state,approved_by,created_at,applied_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'applied',?,?,?)").bind(id,f.owner,f.rich,r.kind,r.text,r.context,r.role,r.role==='tutor'?f.teacher:r.role==='user'?f.owner:null,r.name,'user',f.owner,'Usuario de ejemplo',f.owner,at,at).run();
   if(r.role==='tutor')await db.prepare('INSERT INTO memory_contribution_attachments(contribution_id,attachment_id,speaker_role,speaker_id,speaker_name,recorder_role,recorded_by,recorder_name,consent_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,f.audio,'tutor',f.teacher,'Tutor de ejemplo','user',f.owner,'Usuario de ejemplo','2026-10-20T09:59:00Z').run();
  }
  await db.prepare('UPDATE notes SET clarified=?,version=3 WHERE id=?').bind('Una aclaración reciente sin autor documentado.',f.unknown).run();for(const [version,text]of [[2,'Una aclaración antigua sin autor documentado.'],[3,'Una aclaración reciente sin autor documentado.']])await db.prepare('INSERT INTO revisions(id,owner,note_id,version,content,created_at) VALUES(?,?,?,?,?,?)').bind(crypto.randomUUID()+':'+f.unknown,f.owner,f.unknown,version,JSON.stringify({after:{noteId:f.unknown,expectedVersion:version-1,clarified:text}}),at).run();

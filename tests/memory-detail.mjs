@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createMemoryDetailResource,isUnifiedMemory,memoryActorLabel,memoryListHref,memoryDetailHref,memoryReturnLanguage,memorySnapshot} from '../lib/memory-detail.ts';
 const id='70000000-0000-4000-8000-000000000001',other='70000000-0000-4000-8000-000000000002',at='2026-10-20T10:00:00.000Z';
-const memory=(noteId=id)=>({note:{id:noteId,language:'sq',original:'Synthetic original',clarified:'',title:'Synthetic title',created_at:at,updated_at:at,version:1,worked:0,reviewed:0,tags:[],attachments:[]},entries:[{id:'capture:'+noteId,kind:'capture',text:'Synthetic original',context:'',createdAt:at,appliedAt:null,author:{role:'user',id:'viewer',name:null},recordedBy:null,source:{system:'capture',id:noteId,noteVersion:1},attachments:[]}],classContexts:[],contributionVersion:0,pendingContributionCount:0,history:{hasAppliedDebrief:false,hasClassWork:false,hasUserContributions:false,hasAiContributions:false,hasTutorContributions:false}});
+const memory=(noteId=id)=>({note:{id:noteId,language:'sq',original:'Synthetic original',clarified:'',title:'Synthetic title',created_at:at,updated_at:at,version:1,reviewed:0,tags:[],attachments:[]},entries:[{id:'capture:'+noteId,kind:'capture',text:'Synthetic original',context:'',createdAt:at,appliedAt:null,author:{role:'user',id:'viewer',name:null},recordedBy:null,source:{system:'capture',id:noteId,noteVersion:1},attachments:[]}],contributionVersion:0,pendingContributionCount:0,history:{hasAppliedDebrief:false,hasUserContributions:false,hasAiContributions:false,hasTutorContributions:false}});
 const response=m=>Response.json({memory:m});
 test('read-only load calls exactly the unified endpoint without persistent cache',async()=>{const states=[],calls=[];const r=createMemoryDetailResource(async(url,options)=>{calls.push({url,options});return response(memory());},s=>states.push(s));await r.load(id);assert.equal(calls[0].url,'/api/memories/'+id);assert.equal(calls[0].options.method,'GET');assert.equal(calls[0].options.cache,'no-store');assert.equal(calls[0].options.credentials,'same-origin');assert(calls[0].options.signal instanceof AbortSignal);assert.deepEqual(states.map(s=>s.status),['loading','ready']);r.dispose();});
 test('return path preserves language and rejects arbitrary memory destinations',()=>{assert.equal(memoryListHref('en'),'/memorias?language=en');assert.equal(memoryReturnLanguage('?view=memory&language=sq'),'sq');assert.equal(memoryReturnLanguage('?language=foreign'),'all');assert.equal(memoryDetailHref(id),'/memorias/'+id);assert.throws(()=>memoryDetailHref('https://foreign.example'));});
@@ -13,6 +13,11 @@ test('network failures preserve an existing read, authorization/conflicts clear 
 test('invalid JSON is a contract error and clears a previous read',async()=>{const states=[];let bad=false;const r=createMemoryDetailResource(async()=>bad?new Response('not-json'):response(memory()),s=>states.push(s));await r.load(id);bad=true;await r.load(id);assert.equal(states.at(-1).failure,'invalid');assert.equal(states.at(-1).memory,null);r.dispose();});
 test('unknown authors and media identities are never inferred',()=>{assert.equal(memoryActorLabel({role:'unknown',id:null,name:null},'viewer'),'Autoría desconocida');assert.equal(memoryActorLabel({role:'tutor',id:'teacher',name:null},'viewer'),'Maestro sin nombre registrado');assert.equal(memoryActorLabel({role:'user',id:'viewer',name:null},'viewer'),'Tú');});
 
-test('current clarification stays visible; older/incorporated snapshots remain expandable',()=>{const e={kind:'revision',source:{system:'revision',noteVersion:3}};assert.equal(memorySnapshot(e,3),false);assert.equal(memorySnapshot(e,4),true);assert.equal(memorySnapshot({...e,source:{...e.source,incorporatedEntryIds:['class:synthetic']}},3),true);});
+test('current clarification is visible and older revisions can expand',()=>{
+ const e={kind:'revision',source:{system:'revision',noteVersion:2}};
+ assert.equal(memorySnapshot(e,2),false);
+ assert.equal(memorySnapshot(e,3),true);
+ assert.equal(memorySnapshot({...e,kind:'debrief'},3),false);
+});
 
 test('read-only release accepts a memory without the unpublished writer counter',()=>{const m=memory();delete m.contributionVersion;assert.equal(isUnifiedMemory(m,id),true);});

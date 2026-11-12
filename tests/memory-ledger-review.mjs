@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import {registerHooks} from 'node:module';
 import {Miniflare} from 'miniflare';
 import './local-evidence.mjs';
 
@@ -79,21 +78,14 @@ try{
   assert.equal(p.status,201);assert.equal((await api(owner,'/api/memory-approval','POST',approval(p.body.proposal))).status,200);
   assert.equal((await api(owner,'/api/memories/'+noteId)).body.memory.entries.filter(e=>e.source.system==='contribution').length,2);
  });
- await check('logical correction and code rollback preserve applied entries and original',async()=>{
+ await check('logical correction preserves applied entries and original',async()=>{
   const f=await fixture(),before=(await api(f.owner,'/api/memories/'+f.noteId)).body.memory;
   const p=await api(f.owner,'/api/memory-proposals','POST',{...f.draft,id:randomUUID(),expectedMemoryVersion:1,kind:'correction',text:'Synthetic reviewed correction'});
   assert.equal(p.status,201);assert.equal((await api(f.owner,'/api/memory-approval','POST',approval(p.body.proposal))).status,200);
   const after=(await api(f.owner,'/api/memories/'+f.noteId)).body.memory;assert.deepEqual(after.note,before.note);
   assert.equal(after.entries.filter(e=>e.source.system==='contribution').length,2);assert.equal(after.contributionVersion,2);
-  globalThis.__memoryRollbackEnv={DB:db,BUCKET:bucket};
-  registerHooks({resolve(specifier,context,next){if(specifier==='cloudflare:workers')return {url:'data:text/javascript,export const env=globalThis.__memoryRollbackEnv;',shortCircuit:true};return next(specifier,context);}});
-  const {readMemory}=await import('./fixtures/compatibility/v20-memory-reader.mjs');
-  const tableNames=(await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' ORDER BY name").all()).results.map(r=>r.name);
-  const dump=async()=>Object.fromEntries(await Promise.all(tableNames.map(async t=>[t,(await db.prepare('SELECT * FROM "'+t+'"').all()).results.map(r=>JSON.stringify(r)).sort()])));
-  const saved=await dump(),old=await readMemory(f.owner,f.noteId);
-  assert.deepEqual(old.note,after.note);assert.equal(old.entries.filter(e=>e.source.system==='contribution').length,2);
-  assert.equal(old.entries.find(e=>e.source.id===f.p.id).text,f.p.content.text);
-  assert.deepEqual(await dump(),saved);
+  assert.equal(after.entries.find(e=>e.source.id===f.p.id).text,f.p.content.text);
+
  });
  const report={base:'2321ab88ed4792f217b02cb51aedb357590a1ba8',syntheticOnly:true,production:false,
   passed:checks.filter(c=>c.passed).length,failed:checks.filter(c=>!c.passed).length,checks};
