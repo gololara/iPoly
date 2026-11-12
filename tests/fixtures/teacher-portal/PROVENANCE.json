@@ -1,0 +1,29 @@
+{
+  "purpose": "Test-only source fixtures, no data or credentials; extracted from archive refs of this same repository",
+  "files": [
+    {
+      "path": "teacher-worker.mjs",
+      "source_commit": "fb160a363ee76bd0397b93a83756e8879232adc2",
+      "source_path": "lib/teacher-worker.mjs",
+      "sha256": "d39ad09597cee0d94205e144ea2645fd35e97f9db4b2f4d5edf3a5da0809341a"
+    },
+    {
+      "path": "0000_certain_mephistopheles.sql",
+      "source_commit": "fb160a363ee76bd0397b93a83756e8879232adc2",
+      "source_path": "drizzle/0000_certain_mephistopheles.sql",
+      "sha256": "93b8d4eed4ebcd9ff55e12d8640ed565e05b227d842952d701f9ca540eda3507"
+    },
+    {
+      "path": "stable-migrations/0001_guest_sessions.sql",
+      "source_commit": "3ad963b59059902dc6cc0d5c7decea39e75247a2",
+      "source_path": "teacher-receiver/migrations/0001_guest_sessions.sql",
+      "sha256": "4b4660d903fcf6fe672e1e121ea8e0baa317d5a1165d7b5b2fe688575c753cbb"
+    },
+    {
+      "path": "stable-migrations/0002_stable_links.sql",
+      "source_commit": "3ad963b59059902dc6cc0d5c7decea39e75247a2",
+      "source_path": "teacher-receiver/migrations/0002_stable_links.sql",
+      "sha256": "bb238007efa90ec9e54047c69b9694a30500e8b7ee79c84e1318633e9e0b5a69"
+    }
+  ]
+}

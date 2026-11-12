@@ -1,0 +1,17 @@
+import './local-evidence.mjs';
+import assert from 'node:assert/strict';import {writeFile} from 'node:fs/promises';
+const base='http://127.0.0.1:8788',who='qa-revisions-mcp-'+crypto.randomUUID(),headers={'oai-authenticated-user-id':who,'oai-authenticated-user-email':who+'@example.test','Content-Type':'application/json'};let passed=0;const ok=(v,m)=>{assert.ok(v,m);passed++;};const id=()=>crypto.randomUUID();
+const api=async(path,data)=>{const r=await fetch(base+'/api/'+path,{method:'POST',headers,body:JSON.stringify(data)});assert.ok(r.ok);return r.json();};
+const rpc=async(method,params={})=>{const r=await fetch(base+'/mcp',{method:'POST',headers,body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});return (await r.json()).result;};
+const tool=async(name,args)=>rpc('tools/call',{name,arguments:args});const value=r=>JSON.parse(r.content[0].text);
+let r=await rpc('tools/list');ok(r.tools.some(t=>t.name==='ipoly_preparaciones'),'historical catalogue retains preparation lookup');ok(r.tools.find(t=>t.name==='ipoly_proponer_preparacion').inputSchema.properties.replaces.properties.expectedVersion.minimum===1,'replacement contract exposed');
+r=await rpc('initialize');ok(r.instructions.includes('replaces=')&&r.instructions.includes('forTutor=true'),'runtime instructions specify revision and eligibility');
+await api('languages',{name:'Shqip'});
+const note=id();await api('notes',{id:note,language:'sq',original:'MCP synthetic',tags:[]});const d=id();await api('debriefs',{id:d,summary:'Synthetic',changes:[{noteId:note,expectedVersion:1,clarified:'Reviewed',tags:[]}]});await api('debriefs/apply',{id:d,confirmed:true});
+const p={id:id(),language:'sq',summary:'Synthetic MCP class',references:[{noteId:note,expectedVersion:2}]};r=await tool('ipoly_proponer_preparacion',p);ok(!r.isError,'MCP creates stable preparation');
+const revision={...p,id:id(),summary:'Synthetic revised',replaces:{preparationId:p.id,expectedVersion:1}};r=await tool('ipoly_proponer_preparacion',revision);ok(!r.isError,'MCP accepts explicit revision');
+r=value(await tool('ipoly_preparacion',{id:p.id}));ok(r.thread.id===p.id&&r.history.length===2&&r.thread.currentPreparationId===revision.id,'MCP recovers identity and history');
+r=value(await tool('ipoly_preparaciones',{}));ok(r.preparations.length===1&&r.preparations[0].id===revision.id,'MCP list shows only current');
+r=await tool('ipoly_proponer_preparacion',{...revision,id:id()});ok(r.isError,'MCP blocks revision from outdated parent');
+r=await tool('ipoly_aplicar_propuesta_tutor',{id:p.id,expectedVersion:1,confirmed:true});ok(r.isError,'MCP blocks historic proposal approval');
+const out={passed,scope:'Local MCP; synthetic owner and note only'};await writeFile('.sites-runtime/evidence/tutor-revisions-mcp.json',JSON.stringify(out,null,2));console.log(out);

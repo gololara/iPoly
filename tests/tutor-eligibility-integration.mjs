@@ -1,0 +1,35 @@
+import './local-evidence.mjs';
+import assert from 'node:assert/strict';
+import {writeFile} from 'node:fs/promises';
+const base='http://127.0.0.1:8788',who='qa-eligibility-'+crypto.randomUUID();let passed=0;
+const ok=(v,m)=>{assert.ok(v,m);passed++;};const id=()=>crypto.randomUUID();
+async function call(path,method='GET',data){const r=await fetch(base+path,{method,headers:{'oai-authenticated-user-id':who,'oai-authenticated-user-email':who+'@example.test','Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});return {status:r.status,body:await r.json()};}
+async function rpc(name,args){const r=await call('/mcp','POST',{jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}});return r.body.result;}
+const note=id(),raw=id();for(const n of [note,raw])await call('/api/notes','POST',{id:n,language:'sq',original:'Synthetic original',tags:['Trabajo']});
+const prep=version=>({id:id(),language:'sq',summary:'Synthetic class',references:[{noteId:note,expectedVersion:version}]});
+ok((await call('/api/preparations','POST',prep(1))).status===409,'raw note rejected');
+await call('/api/notes','PATCH',{noteId:note,expectedVersion:1,clarified:'Manual',tags:['Trabajo'],requestId:id()});ok((await call('/api/preparations','POST',prep(2))).status===409,'worked/manual note rejected');
+const d={id:id(),summary:'Synthetic review',changes:[{noteId:note,expectedVersion:2,clarified:'Reviewed',tags:['Trabajo']}]};await call('/api/debriefs','POST',d);ok((await call('/api/preparations','POST',prep(2))).status===409,'unapplied debrief rejected');
+ok((await call('/api/notes?forTutor=true&review=all')).body.notes.length===0,'tutor query cannot include raw notes through all');
+ok((await rpc('ipoly_proponer_preparacion',prep(2))).isError===true,'MCP cannot bypass eligibility');
+await call('/api/debriefs/apply','POST',{id:d.id,confirmed:true});
+let r=await call('/api/notes?forTutor=true&review=all');ok(r.body.notes.length===1&&r.body.notes[0].id===note,'eligible query only returns applied-debrief notes');
+let m=await rpc('ipoly_notas',{forTutor:true,review:'all'});ok(JSON.parse(m.content[0].text).notes.length===1,'MCP tutor query filtered');
+ok((await call('/api/notes?forTutor=invalid')).status===400,'invalid query flag rejected');
+ok((await call('/api/notes')).body.notes.length===2,'ordinary notes query unchanged');
+let p=prep(3);r=await call('/api/preparations','POST',p);ok(r.status===201,'reviewed proposal accepted');
+ok((await call('/api/notes/'+note)).body.note.version===3,'proposal does not mutate notes');
+await call('/api/notes','PATCH',{noteId:note,expectedVersion:3,clarified:'Later clarification',tags:['Trabajo'],requestId:id()});
+ok((await call('/api/tutor/apply','POST',{id:p.id,expectedVersion:1,confirmed:true})).status===409,'stale approval rejected');
+ok((await call('/api/preparations/'+p.id)).body.preparation.state==='proposed','stale proposal retained');
+ok((await call('/api/preparations','POST',p)).status===409,'stale proposed replay cannot bypass validation');
+p=prep(4);ok((await call('/api/preparations','POST',p)).status===201,'later clarification remains eligible');
+const approvals=await Promise.all([1,2].map(()=>call('/api/tutor/apply','POST',{id:p.id,expectedVersion:1,confirmed:true})));ok(approvals.every(r=>r.status===200),'concurrent approval idempotent');
+ok((await call('/api/preparations/'+p.id)).body.preparation.version===2,'one approval version increment');
+const mixed={...prep(4),references:[{noteId:note,expectedVersion:4},{noteId:raw,expectedVersion:1}]};ok((await call('/api/preparations','POST',mixed)).status===409,'mixed pending source rejects whole proposal');
+ok((await call('/api/preparations/'+mixed.id)).status===404,'rejected proposal not persisted');
+const close={id:id(),preparationId:p.id,expectedPreparationVersion:2,summary:'Synthetic closing',reported:'Synthetic report from Usuario de ejemplo',sources:[{noteId:raw,expectedVersion:1}],changes:[]};ok((await call('/api/closings','POST',close)).status===201,'new closing evidence may be pending');
+ok((await call('/api/tutor/apply','POST',{id:close.id,expectedVersion:1,confirmed:true})).status===200,'closing unaffected');
+r=await call('/api/notes/'+note);ok(r.body.note.original==='Synthetic original'&&r.body.note.clarified==='Later clarification'&&r.body.note.reviewed===1&&r.body.note.tags[0].name==='Trabajo','original clarified tags review preserved');
+ok((await call('/api/notes/'+raw)).body.note.reviewed===0,'closing does not falsely review new source');
+const out={passed,scope:'Local Worker/API/MCP, isolated synthetic owner, no production writes'};await writeFile('.sites-runtime/evidence/tutor-eligibility-integration.json',JSON.stringify(out,null,2));console.log(out);

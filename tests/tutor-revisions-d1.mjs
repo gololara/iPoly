@@ -1,0 +1,33 @@
+import './local-evidence.mjs';
+import assert from 'node:assert/strict';import {readFile,writeFile} from 'node:fs/promises';import {Miniflare} from 'miniflare';
+import {revisionAdvanceSql,groupInsertSql} from '../lib/tutor-thread-sql.ts';import {tutorApplySql} from '../lib/tutor-apply-sql.ts';
+const mf=new Miniflare({modules:true,script:'export default {fetch(){return new Response("synthetic");}}',compatibilityDate:'2026-05-15',d1Databases:['DB'],d1Persist:false,host:'127.0.0.1'});let passed=0;const ok=(v,m)=>{assert.ok(v,m);passed++;};
+try{
+ const db=await mf.getD1Database('DB');
+ const migration=async name=>{const sql=await readFile('drizzle/'+name+'.sql','utf8');await db.batch(sql.split(';').filter(s=>s.trim()).map(s=>db.prepare(s)));};
+ for(const name of ['0000_mature_forgotten_one','0001_aromatic_gateway','0002_living_galactus','0003_amazing_molly_hayes'])await migration(name);
+ await db.prepare("INSERT INTO notes(id,owner,language,original,version,created_at,updated_at,request_hash) VALUES('n','qa','sq','Original',2,'date','date','hash')").run();
+ await db.prepare("INSERT INTO debriefs(id,owner,summary,changes,state,created_at) VALUES('d','qa','Summary',?,'applied','date')").bind(JSON.stringify([{noteId:'n',expectedVersion:1}])).run();
+ const data=JSON.stringify({language:'sq',summary:'Synthetic',references:[{noteId:'n',expectedVersion:2}]});
+ const insert=id=>db.prepare("INSERT INTO tutor_records(id,owner,kind,data,request_hash,created_at) VALUES(?,'qa','preparation',?,'hash','date')").bind(id,data);
+ await db.batch(['l1','l2','l3'].map(insert));const before=(await db.prepare('SELECT * FROM tutor_records ORDER BY id').all()).results;
+ await migration('0004_lonely_paper_doll');ok(JSON.stringify(before)===JSON.stringify((await db.prepare('SELECT * FROM tutor_records ORDER BY id').all()).results),'migration preserves all existing records');ok((await db.prepare('SELECT COUNT(*) AS n FROM tutor_threads').first()).n===0,'migration never groups old records automatically');
+ const member=(id,thread)=>db.prepare("INSERT INTO tutor_thread_members(preparation_id,thread_id,owner,created_at) VALUES(?,?,'qa','date')").bind(id,thread);
+ for(const name of ['0005_blushing_veda','0006_majestic_thanos','0007_powerful_black_tarantula'])await migration(name);
+ const grouping=(thread,refs=[{preparationId:'l1',expectedVersion:1},{preparationId:'l2',expectedVersion:1}],owner='qa')=>[db.prepare(groupInsertSql).bind(thread,owner,'sq','l2','hash','date',JSON.stringify(refs),owner),member('l1',thread),member('l2',thread)];
+ await assert.rejects(db.batch(grouping('stale',[{preparationId:'l1',expectedVersion:9}])) ,/tutor_thread_guard_check/);passed++;ok((await db.prepare("SELECT COUNT(*) AS n FROM tutor_threads WHERE id='stale'").first()).n===0,'failed grouping rolls back thread');
+ await assert.rejects(db.batch(grouping('foreign',undefined,'other')),/tutor_thread_guard_check/);passed++;
+ const grouped=await Promise.allSettled(['g1','g2'].map(g=>db.batch(grouping(g))));ok(grouped.filter(r=>r.status==='fulfilled').length===1,'competing grouping has one winner');const thread=grouped[0].status==='fulfilled'?'g1':'g2';ok((await db.prepare('SELECT COUNT(*) AS n FROM tutor_threads').first()).n===1,'failed concurrent grouping leaves no orphan thread');
+ ok(JSON.stringify(before)===JSON.stringify((await db.prepare("SELECT * FROM tutor_records WHERE id IN ('l1','l2','l3') ORDER BY id").all()).results),'grouping leaves legacy records unchanged');
+ const advance=(old,version,next)=>db.prepare(revisionAdvanceSql).bind(old,old,'qa',version,next,thread,'qa');
+ const revise=(next,old='l2',version=1)=>[insert(next),advance(old,version,next),member(next,thread)];
+ const race=await Promise.allSettled(['r1','r2'].map(r=>db.batch(revise(r))));ok(race.filter(r=>r.status==='fulfilled').length===1,'competing revisions serialized atomically');const current=race[0].status==='fulfilled'?'r1':'r2',loser=current==='r1'?'r2':'r1';ok(!await db.prepare('SELECT id FROM tutor_records WHERE id=?').bind(loser).first(),'failed revision insert rolled back');
+ ok((await db.prepare('SELECT current_preparation_id,version FROM tutor_threads WHERE id=?').bind(thread).first()).version===2,'pointer advances once');
+ await assert.rejects(db.batch([db.prepare(tutorApplySql).bind('now','l1','qa',1)]),/tutor_apply_guard_check/);passed++;ok((await db.prepare("SELECT state FROM tutor_records WHERE id='l1'").first()).state==='proposed','superseded pending proposal remains intact');
+ await assert.rejects(db.batch([...revise('late',current),db.prepare("INSERT INTO tutor_thread_events(id,thread_id,owner,kind,data,created_at) VALUES(NULL,?,'qa','revision','{}','date')").bind(thread)]),/NOT NULL/);passed++;
+ ok((await db.prepare('SELECT current_preparation_id FROM tutor_threads WHERE id=?').bind(thread).first()).current_preparation_id===current,'late failure rolls back pointer');ok(!await db.prepare("SELECT id FROM tutor_records WHERE id='late'").first(),'late failure rolls back revision');
+ const approvalRace=await Promise.allSettled([db.batch([db.prepare(tutorApplySql).bind('now',current,'qa',1)]),db.batch(revise('approval-race',current))]);ok(approvalRace.filter(r=>r.status==='fulfilled').length===1,'approval versus revision cannot both win using old version');
+ const currentThread=await db.prepare('SELECT current_preparation_id FROM tutor_threads WHERE id=?').bind(thread).first();const previous=await db.prepare('SELECT state,version FROM tutor_records WHERE id=?').bind(current).first();ok(currentThread.current_preparation_id==='approval-race'?previous.state==='proposed':previous.state==='applied'&&previous.version===2,'winner determines coherent revision/approval state');
+ ok((await db.prepare("SELECT original,version FROM notes WHERE id='n'").first()).original==='Original','notes never changed by revision/grouping');
+ const out={passed,scope:'Ephemeral D1: additive migration, grouping/revision races, approval race, late-failure rollback; synthetic only'};await writeFile('.sites-runtime/evidence/tutor-revisions-d1.json',JSON.stringify(out,null,2));console.log(out);
+}finally{await mf.dispose();}

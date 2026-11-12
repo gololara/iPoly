@@ -1,0 +1,139 @@
+{
+  "checksums": {
+    "drizzle/0000_mature_forgotten_one.sql": "86581b60ab7c7f2315ffe0e1854ee11719f8aa70db04b4a1136b36cd4ddcf228",
+    "drizzle/0001_aromatic_gateway.sql": "b9c599972f5266d108cfd9aef091571814949ceb1be7ae91863446810c8bf554",
+    "drizzle/0002_living_galactus.sql": "9d43940ba8315332f043a2b16dffae85fad9e4ef5910da766166acc026cec4dc",
+    "drizzle/0003_amazing_molly_hayes.sql": "5d9c9cc3ee14bea66a6c093bba9f7e4b62697cc665a10dbd01099573a38a37b5",
+    "drizzle/0004_lonely_paper_doll.sql": "1ba34f8831a03498493f1c52379c9c6cf0bbd6f15ca17291620795d2e8a10d75",
+    "drizzle/0005_blushing_veda.sql": "440e17f0fdad0fa85f48c6043c0646ca99ec4d4b3ea7009c4c04027394440b83",
+    "drizzle/0006_majestic_thanos.sql": "5ae5deb678cf68fbd6622575f3fb1d76bc60f2678df69f4b7a8c2199f5111d7a",
+    "drizzle/0007_powerful_black_tarantula.sql": "843eb9063e122efcbe54b6c77ea86433a29f160589705bda8e50ee16daaef0ef",
+    "drizzle/0008_cooing_squadron_supreme.sql": "4ee27c1980ec57ea4b70c5152239d3cb42d5a0842ead272ae02e5172f50013ff",
+    "drizzle/0009_watery_mach_iv.sql": "c742c52c909ca2f7b7e4e2f37c3f17947967de6cf60b822fb9df330e5a10d5d4",
+    "drizzle/0010_grey_nuke.sql": "fc77f50e5c8fd9e476e69b16791ab2520e867bfa8413ca6fa7be7b92d605e347",
+    "drizzle/0011_teacher_stable_links.sql": "ce76d9f3bee1fec6bde21be9899e903386b602bd96ca80a235062109ad427120",
+    "drizzle/0012_private_class_sessions.sql": "ec225547ecd755f5ae85f7c0ad082aa986b41fc3a06ac0712692ffe8bbf3265e",
+    "drizzle/0013_memory_contributions.sql": "c83b8222d4a06eee4c8eb945e967760f473092a25bfcac32c0eb5d68a6778e28",
+    "drizzle/0015_legacy_attribution.sql": "cbb740204501b1b751045437e6a718b955b0e77583f09e08bf875a408d9d2281",
+    "drizzle/meta/0000_snapshot.json": "d3dd5dbd4904734f8f14cb176d142499d8fc81b7e90293db22f00154a8de3077",
+    "drizzle/meta/0001_snapshot.json": "bc4ff567bad9b1f4e3ff395a29d2d6034e5fc4436265648a05fcc7efdb394352",
+    "drizzle/meta/0002_snapshot.json": "8d7230bfe87ea29bc1ae0cfebd0bb3d2fae4c1e3ca62e356a26f141e1aa17655",
+    "drizzle/meta/0003_snapshot.json": "cb187734d11003d39702f7ceb03d88ab5bb385da0f56dc790b89cc617d9584b8",
+    "drizzle/meta/0004_snapshot.json": "0a54ef89365d58ed104148cdead505f3482f7a387a74cf5c0688d9d7963b8845",
+    "drizzle/meta/0005_snapshot.json": "caa3ffaafd5f374812f13ba5299e74bb01d3b0517617f8cc70e12ad4bee70fe0",
+    "drizzle/meta/0006_snapshot.json": "eee68058a5d08879b13b5ee2ce9b9b701f7e8ca56b98ca77fc0401cd882847de",
+    "drizzle/meta/0007_snapshot.json": "615fe778f65e1f701ebc8d058c8dc8c5757a28ae01cea531fb6a01062acd1487",
+    "drizzle/meta/0008_snapshot.json": "03baf67bb2ee625d42e20a23dce34a15cc25886e214bae2ce3e2b5809ca996c6",
+    "drizzle/meta/0009_snapshot.json": "d9f694e66b75ff02233207276ef7527054dff6c83015e8f31369bbd7d07429ee",
+    "drizzle/meta/0010_snapshot.json": "64bf0bd83346c776911f5ffdc982f8a93db0548d54eac56aca4a5c6e2cae0f38",
+    "drizzle/meta/0013_snapshot.json": "2a6f792a85a2eea14d4834f0df053f87be72c4d64631a1ddf5a67a801a821c7f",
+    "drizzle/meta/0015_snapshot.json": "3edec1b27abbf26cda44bfe913c1ecb716ee597e2a9a69303ac40f61ac693a21"
+  },
+  "journalEntries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791471180196,
+      "tag": "0000_mature_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791471564906,
+      "tag": "0001_aromatic_gateway",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791807933241,
+      "tag": "0002_living_galactus",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791814822697,
+      "tag": "0003_amazing_molly_hayes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1791901735751,
+      "tag": "0004_lonely_paper_doll",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791906616963,
+      "tag": "0005_blushing_veda",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791962679985,
+      "tag": "0006_majestic_thanos",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791971544137,
+      "tag": "0007_powerful_black_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791976554749,
+      "tag": "0008_cooing_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791979022756,
+      "tag": "0009_watery_mach_iv",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791987577605,
+      "tag": "0010_grey_nuke",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792400000000,
+      "tag": "0011_teacher_stable_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792500000000,
+      "tag": "0012_private_class_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792696965100,
+      "tag": "0013_memory_contributions",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1792797224989,
+      "tag": "0015_legacy_attribution",
+      "breakpoints": true
+    }
+  ]
+}
